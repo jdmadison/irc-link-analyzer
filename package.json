@@ -1,0 +1,26 @@
+{
+  "name": "irc-link-analyser",
+  "version": "1.0.0",
+  "description": "Analyse links sent in IRC messages and check for unsafe/nsfw content, then send warnings to the channel.",
+  "main": "index.js",
+  "dependencies": {
+    "gcloud": "^0.37.0",
+    "irc": "^0.5.0",
+    "node-promise": "^0.5.12",
+    "request": "^2.74.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jdmadison/irc-link-analyzer.git"
+  },
+  "author": "Jeremy Madison",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jdmadison/irc-link-analyzer/issues"
+  },
+  "homepage": "https://github.com/jdmadison/irc-link-analyzer#readme"
+}
