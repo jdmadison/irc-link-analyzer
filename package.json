@@ -1,7 +1,7 @@
 {
-  "name": "irc-link-analyser",
+  "name": "irc-link-analyzer",
   "version": "1.0.0",
-  "description": "Analyse links sent in IRC messages and check for unsafe/nsfw content, then send warnings to the channel.",
+  "description": "Analyze links sent in IRC messages and check for unsafe/nsfw content, then send warnings to the channel.",
   "main": "index.js",
   "dependencies": {
     "gcloud": "^0.37.0",
