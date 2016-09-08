@@ -9,119 +9,84 @@ var config = require('./config');
 var irc = require('irc');
 var gcloud = require('gcloud')(config.gcloud);
 
+var queue = {};
+
+var Url = require('./handlers/base').Url;
+
 /*
  * Load url handlers
  */
-var url_handlers = config.load_url_handlers.map(function (v, i, a) {
-    return {
-        fn: require('./handlers/' + v.name),
-        config: v.config
-    };
+var url_handlers = config.urlHandlers.map(function (v, i, a) {
+    var handler = require('./handlers/' + v.name);
+    return new handler(v.config);
 });
 
 /*
- * Push default handler to the end of the array so it will run last
+ * Wire-up handler events
  */
-url_handlers.push({
-    fn: require('./handlers/default'),
-    config: config.handler_config
+url_handlers.forEach(function (handler, idx, arr) {
+    handler.on('processed', processResults);
 });
 
-/*
- * Connect to IRC networks / channels
- */
-var irc_clients = null;
-irc_clients = config.irc.networks.map(function (v, i, a) {
-    var client = new irc.Client(v.server, v.nick, v.client);
-    client.addListener('message#', handleMessage);
-    return client;
-});
 
 
 /**
  *
- * @param nick Sender
- * @param to Recipient (user or channel)
- * @param text The raw message text
- * @param message Message Object
  */
-function handleMessage(nick, to, text, message) {
+var handleMessage = function (client) {
+    return function (nick, to, text, message) {
 
-    var urls = getUrlsFromMessage(text).map(function (v, i, a) {
-        return {
-            url: v,
-            short: v.length <= 30 ? v : v.substr(0, 13) + '....' + v.substr(-13, 13),
-            handled: false,
-            handler: null,          // the name of the url handler
-            result: {
-                title: null,        // image/page/gallery title
-                type: null,         // image, gallery, page, etc
-                safe_search: {},    // google detectSafeSearch response
-                tags: []            // handler-specific tags (nsfw, advertising, etc)
-            },
-            report: null            // content report to send back to IRC
-        }
-    });
+        var urls = getUrlsFromMessage(text);
 
-    if (urls.length == 0) return;
+        if (urls.length == 0) return;
 
-    /*
-     * Run url handlers one at a time, so each subsequent one will only have to examine urls not processed
-     * by the previeus handlers.
-     */
-    var runHandler = function (handler, urls, handlers, irc_client, irc_to) {
+        urls.forEach(function (url, idx, arr) {
 
-        /*
-         * handler will be undefined when `shift` is run on an empty array
-         */
-        if (handler == undefined) {
-            return processResults(urls, irc_client, irc_to);
-        }
+            url_handlers.forEach(function (handler, _idx, _arr) {
+                if (handler.canHandle(url)) {
+                    var url_object = new Url(url);
+                    queue[url_object.uuid] = {client: client, channel: to, from: nick};
+                    return handler.processUrl(url_object);
+                }
+            });
 
-        var handler_fn = new handler.fn(handler.config, config.handler_options, gcloud);
-        handler_fn.processUrls(urls, function (results) {
-            urls = results;
-            runHandler(handlers.shift(), urls, handlers, irc_client, irc_to);
         });
+    }
+};
 
-    };
+function processResults(url) {
 
-    var handlers = url_handlers.slice(0)
+    console.log('Processed URL: ' + url.url);
 
-    runHandler(handlers.shift(), urls, handlers, this || null, to);
+    if (!url.warn) {
+        return;
+    }
 
-}
+    var warnings = url.result.tags,
+        source = queue[url.uuid];
 
-function processResults(results, client, to) {
+    delete queue[url.uuid];
 
-    var vision = require('gcloud').vision;
-
-    results.forEach(function (result, index, arr) {
-
-        console.log('Processed URL: ' + result.url);
-
-        var safe_search = result.result.safe_search,
-            warnings = result.result.tags;
-
-        for (var key in safe_search) {
-            if (vision.likelihood[safe_search[key]] >= vision.likelihood[config.handler_options.vision_warning_threshold]) {
-                warnings.push(key[0].toUpperCase() + key.slice(1) + ' (' + safe_search[key][0] + safe_search[key].slice(1).toLowerCase().replace(/_/, ' ') + ')');
-            }
-        }
-
-        if (warnings.length == 0) {
-            return;
-        }
-
-        var title = result.result.title ? ' | ' + result.result.title : '',
-            message = 'Content Warning (' + result.short + title + '): ' + warnings.join(', ');
-
-        console.log(to + ' => ' + message);
-        if (client) {
-            client.say(to, message);
-        }
-
+    url.result.safeSearch.forEach(function (val, idx, arr) {
+        var key = Object.keys(val)[0];
+        warnings.push(key[0].toUpperCase() + key.slice(1) + ' (' + val[key][0] + val[key].slice(1).toLowerCase().replace(/_/, ' ') + ')');
     });
+
+    url.result.safeBrowsing.forEach(function (val, idx, arr) {
+        warnings.push(val['threatType'][0] + val['threatType'].slice(1).toLowerCase().replace(/_/, ' '));
+    });
+
+    var title = url.result.title ? ' | ' + url.result.title : '',
+        message = 'Content Warning (' + url.short + title + '): ' + warnings.join(', ');
+
+    if (source.client != undefined) {
+        console.log(source.channel + ' => ' + message);
+        source.client.say(source.channel, message);
+    } else {
+        console.log(message);
+    }
+
+    console.log(JSON.stringify(url));
 
 }
 
@@ -145,5 +110,25 @@ function getUrlsFromMessage(message) {
     return matches;
 
 }
+
+/*
+ * Connect to IRC networks / channels
+ */
+var irc_clients = null;
+irc_clients = config.irc.networks.map(function (v, i, a) {
+    var client = new irc.Client(v.server, v.nick, v.client);
+    client.addListener('message#', handleMessage(client));
+    client.addListener('pm', function (from, message) {
+        console.log(from + ' => ' + message);
+        if (from != 'wpc') {
+            return;
+        }
+
+        if (message == 'quit') {
+            process.exit();
+        }
+    });
+    return client;
+});
 
 
