@@ -8,7 +8,7 @@
 var Base = require.main.require('./handlers/base').Base;
 
 function Default(handler_config) {
-    Base.call(this);
+    Base.call(this, "Default");
     this.gcloud = require('gcloud')(this.config.gcloud);
 }
 

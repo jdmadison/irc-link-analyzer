@@ -11,7 +11,7 @@ var IMAGE_ENDPOINT = 'https://api.imgur.com/3/image/';              // + image_i
 var ALBUM_ENDPOINT = 'https://api.imgur.com/3/album/';              // + album_id
 
 function Imgur(handler_config) {
-    Base.call(this);
+    Base.call(this, "Imgur");
     this.handler_config = handler_config;
     this.url_parser = require('url');
 }

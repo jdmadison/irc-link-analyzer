@@ -28,7 +28,7 @@ url_handlers.forEach(function (handler, idx, arr) {
     handler.on('processed', processResults);
 });
 
-
+var default_handler = url_handlers[url_handlers.length - 1];
 
 /**
  *
@@ -42,11 +42,13 @@ var handleMessage = function (client) {
 
         urls.forEach(function (url, idx, arr) {
 
-            url_handlers.forEach(function (handler, _idx, _arr) {
+            url_handlers.some(function (handler, _idx, _arr) {
                 if (handler.canHandle(url)) {
+                    console.log('Queued ' + url + ' with ' + handler.name);
                     var url_object = new Url(url);
                     queue[url_object.uuid] = {client: client, channel: to, from: nick};
-                    return handler.processUrl(url_object);
+                    handler.processUrl(url_object);
+                    return true;
                 }
             });
 
@@ -55,6 +57,11 @@ var handleMessage = function (client) {
 };
 
 function processResults(url) {
+
+    if (!url.processed) {
+        console.log('Queued ' + url.url + ' with Default');
+        return default_handler.processUrl(url);
+    }
 
     console.log('Processed URL: ' + url.url);
 
@@ -86,7 +93,7 @@ function processResults(url) {
         console.log(message);
     }
 
-    console.log(JSON.stringify(url));
+    // console.log(JSON.stringify(url));
 
 }
 
@@ -120,13 +127,22 @@ irc_clients = config.irc.networks.map(function (v, i, a) {
     client.addListener('message#', handleMessage(client));
     client.addListener('pm', function (from, message) {
         console.log(from + ' => ' + message);
-        if (from != 'wpc') {
+        if (config.irc.control_nicks[client.conn._host].indexOf(from) == -1) {
             return;
         }
 
         if (message == 'quit') {
             process.exit();
         }
+
+        if (message.startsWith('say')) {
+            var say = message.split(':');
+            client.say(say[1], say.slice(2).join(''));
+            return;
+        }
+
+        handleMessage(client)(from, from, message, '');
+
     });
     return client;
 });

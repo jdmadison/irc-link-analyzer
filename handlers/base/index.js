@@ -9,13 +9,15 @@
 var events = require('events');
 var uuid = require('node-uuid');
 
-function Base() {
+function Base(name) {
     this.config = require.main.require('./config');
 
     this._queue = [];
     this._interval = null;
 
     this.request = require('request');
+
+    this.name = name;
 
     events.EventEmitter.call(this);
 }
@@ -42,6 +44,15 @@ Base.prototype.processUrl = function (url) {
  */
 Base.prototype.urlProcessed = function (url) {
     this.emit('processed', url);
+};
+
+Base.prototype.parseQuery = function(query) {
+    var params = {};
+    query.split('&').forEach(function(val, idx, arr) {
+       var kv = val.split('=');
+        params[kv[0]] = kv[1];
+    });
+    return params;
 };
 
 /*
