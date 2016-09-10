@@ -94,7 +94,7 @@ Default.prototype.gcloudSafeSearchCallback = function (self, url) {
             threshold = likelihood[self.config.handlerOptions.safeSearchWarningThreshold];
 
         Object.keys(annotations).forEach(function (val, idx, arr) {
-            if (likelihood[annotations[val]] >= threshold) {
+            if (val !== 'spoof' && likelihood[annotations[val]] >= threshold) {
                 var result = {};
                 result[val] = annotations[val];
                 url.result.safeSearch.push(result);
