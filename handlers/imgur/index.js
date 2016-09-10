@@ -12,17 +12,17 @@ var ALBUM_ENDPOINT = 'https://api.imgur.com/3/album/';              // + album_i
 
 function Imgur(handler_config) {
     Base.call(this, "Imgur");
-    this.handler_config = handler_config;
-    this.url_parser = require('url');
+    this.handlerConfig = handler_config;
+    this.urlParser = require('url');
 }
 
 Imgur.prototype = Object.create(Base.prototype);
 // Imgur.constructor = Base;
 
 Imgur.prototype.canHandle = function (url) {
-    var parsed_url = this.url_parser.parse(url);
+    var parsedUrl = this.urlParser.parse(url);
 
-    return parsed_url.hostname.toLowerCase().endsWith('imgur.com');
+    return parsedUrl.hostname.toLowerCase().endsWith('imgur.com');
 };
 
 Imgur.prototype.processUrl = function (url) {
@@ -32,25 +32,25 @@ Imgur.prototype.processUrl = function (url) {
 
 Imgur.prototype.processNext = function () {
     var url = this._queue.shift(),
-        parsed_url = this.url_parser.parse(url.url),
-        image_id = parsed_url.path.match(IMGUR_ID_PATTERN);
+        parsedUrl = this.urlParser.parse(url.url),
+        imageId = parsedUrl.path.match(IMGUR_ID_PATTERN);
 
-    if (image_id == null) {
+    if (imageId == null) {
         return this.urlProcessed(url);
     }
 
     var options = {
         headers: {
-            'Authorization': 'Client-ID ' + this.handler_config.clientId
+            'Authorization': 'Client-ID ' + this.handlerConfig.clientId
         }
     };
 
-    if (image_id[1].length == 5) {
-        options.url = ALBUM_ENDPOINT + image_id[1];
+    if (imageId[1].length == 5) {
+        options.url = ALBUM_ENDPOINT + imageId[1];
         return this.request(options, this.apiRequestAlbumCallback(this, url));
     }
 
-    options.url = IMAGE_ENDPOINT + image_id[1];
+    options.url = IMAGE_ENDPOINT + imageId[1];
     this.request(options, this.apiRequestImageCallback(this, url));
 
 };

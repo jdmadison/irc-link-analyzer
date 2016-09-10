@@ -132,6 +132,9 @@ irc_clients = config.irc.networks.map(function (v, i, a) {
         }
 
         if (message == 'quit') {
+            irc_clients.forEach(function(client, idx, arr) {
+               client.disconnect();
+            });
             process.exit();
         }
 

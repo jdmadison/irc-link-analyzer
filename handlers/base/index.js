@@ -43,11 +43,17 @@ Base.prototype.processUrl = function (url) {
  * @param url
  */
 Base.prototype.urlProcessed = function (url) {
+    url.handledBy = this.name;
     this.emit('processed', url);
 };
 
 Base.prototype.parseQuery = function(query) {
     var params = {};
+
+    if (query == null) {
+        return params;
+    }
+
     query.split('&').forEach(function(val, idx, arr) {
        var kv = val.split('=');
         params[kv[0]] = kv[1];
