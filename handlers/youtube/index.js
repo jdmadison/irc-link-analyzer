@@ -67,6 +67,9 @@ YouTube.prototype.apiRequestVideoCallback = function(self, url) {
         var data = JSON.parse(body);
 
         data.items.forEach(function(val, idx, arr) {
+            url.result.title = val.snippet.title;
+            url.result.type = "Video";
+
             if (val.contentDetails.contentRating == undefined) {
                 return;
             }
@@ -77,9 +80,6 @@ YouTube.prototype.apiRequestVideoCallback = function(self, url) {
             if (RATINGS.hasOwnProperty(ratingBody) && RATINGS[ratingBody].hasOwnProperty(ratingValue)) {
                 url.result.tags.push(RATINGS[ratingBody].name + ' Rating - ' + RATINGS[ratingBody][ratingValue]);
             }
-
-            url.result.title = val.snippet.title;
-            url.result.type = "Video";
         });
 
         self.urlProcessed(url);
