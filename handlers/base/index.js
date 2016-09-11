@@ -8,6 +8,8 @@
 
 var events = require('events');
 var uuid = require('node-uuid');
+var urlParser = require('url');
+var crypto = require('crypto');
 
 function Base(name) {
     this.config = require.main.require('./config');
@@ -61,14 +63,18 @@ Base.prototype.parseQuery = function(query) {
     return params;
 };
 
+
 /*
  * Container object for the URLs being processed
  */
 var Url = function(url) {
+    var parsedUrl = urlParser.parse(url);
     return {
         uuid: uuid.v4(),
         url: url,
         short: url.length <= 30 ? url : url.substr(0, 13) + '....' + url.substr(-13, 13),
+        domain: parsedUrl.hostname.split('.').slice(-2).join('.'),
+        hash: crypto.createHash('md5').update(url).digest('hex'),
         handledBy: null,        // The name of the object that handled the URL
         result: {
             title: null,        // Image or Page Title

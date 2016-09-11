@@ -7,7 +7,8 @@
 var config = require('./config');
 
 var irc = require('irc');
-var gcloud = require('gcloud')(config.gcloud);
+var gcloud = require('google-cloud')(config.gcloud);
+var datastore = gcloud.datastore();
 
 var queue = {};
 
@@ -56,6 +57,35 @@ var handleMessage = function (client) {
     }
 };
 
+var handlePM = function (client) {
+    return function (from, message) {
+        try {
+
+            console.log(from + ' => ' + message);
+            if (config.irc.control_nicks[client.conn._host].indexOf(from) == -1) {
+                return;
+            }
+
+            if (message == 'quit') {
+                irc_clients.forEach(function (client, idx, arr) {
+                    client.disconnect();
+                });
+                process.exit();
+            }
+
+            if (message.startsWith('say')) {
+                var say = message.split(':');
+                client.say(say[1], say.slice(2).join(''));
+                return;
+            }
+
+            handleMessage(client)(from, from, message, '');
+        } catch (exception) {
+                console.log(exception);
+        }
+    }
+};
+
 function processResults(url) {
 
     if (!url.processed) {
@@ -64,6 +94,8 @@ function processResults(url) {
     }
 
     console.log('Processed URL: ' + url.url);
+
+    storeResults(url);
 
     if (!url.warn) {
         return;
@@ -97,6 +129,25 @@ function processResults(url) {
 
 }
 
+function storeResults(url) {
+
+    var key = datastore.key(['Link', url.hash]);
+
+    datastore.save({
+        key: key,
+        data: {
+            timestamp: new Date(),
+            domain: url.domain,
+            warn: url.warn,
+            urlEntity: url
+        }
+    }, function (err, apiResponse) {
+        if (!err) {
+            console.log('Saved URL Result: ' + url.url);
+        }
+    });
+}
+
 /**
  * Extract HTTP/HTTPS URLs from the message body
  *
@@ -125,28 +176,7 @@ var irc_clients = null;
 irc_clients = config.irc.networks.map(function (v, i, a) {
     var client = new irc.Client(v.server, v.nick, v.client);
     client.addListener('message#', handleMessage(client));
-    client.addListener('pm', function (from, message) {
-        console.log(from + ' => ' + message);
-        if (config.irc.control_nicks[client.conn._host].indexOf(from) == -1) {
-            return;
-        }
-
-        if (message == 'quit') {
-            irc_clients.forEach(function(client, idx, arr) {
-               client.disconnect();
-            });
-            process.exit();
-        }
-
-        if (message.startsWith('say')) {
-            var say = message.split(':');
-            client.say(say[1], say.slice(2).join(''));
-            return;
-        }
-
-        handleMessage(client)(from, from, message, '');
-
-    });
+    client.addListener('pm', handlePM(client));
     return client;
 });
 

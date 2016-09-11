@@ -9,7 +9,7 @@ var Base = require.main.require('./handlers/base').Base;
 
 function Default(handler_config) {
     Base.call(this, "Default");
-    this.gcloud = require('gcloud')(this.config.gcloud);
+    this.gcloud = require('google-cloud')(this.config.gcloud);
 }
 
 Default.prototype = Object.create(Base.prototype);
@@ -90,7 +90,7 @@ Default.prototype.gcloudSafeSearchCallback = function (self, url) {
          * Only add the results that meet the minimum safeSearch warning threshold.
          */
         var annotations = apiResponse.responses[0].safeSearchAnnotation,
-            likelihood = require('gcloud').vision.likelihood,
+            likelihood = require('google-cloud').vision.likelihood,
             threshold = likelihood[self.config.handlerOptions.safeSearchWarningThreshold];
 
         Object.keys(annotations).forEach(function (val, idx, arr) {
