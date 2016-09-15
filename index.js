@@ -43,19 +43,33 @@ var handleMessage = function (client) {
 
         urls.forEach(function (url, idx, arr) {
 
-            url_handlers.some(function (handler, _idx, _arr) {
-                if (handler.canHandle(url)) {
-                    console.log('Queued ' + url + ' with ' + handler.name);
-                    var url_object = new Url(url);
-                    queue[url_object.uuid] = {client: client, channel: to, from: nick};
-                    handler.processUrl(url_object);
-                    return true;
-                }
-            });
+            var urlObject = new Url(url),
+                key = datastore.key(['Link', urlObject.hash]);
 
+            datastore.get(key, function (err, entity) {
+
+                /*
+                 * Check URL Cache First
+                 */
+                if (!err && entity != undefined) {
+                    console.log('Loaded ' + url + ' from cache');
+                    queue[entity.data.urlEntity.uuid] = {client: client, channel: to, from: nick};
+                    return processResults(entity.data.urlEntity);
+                }
+
+                url_handlers.some(function (handler, _idx, _arr) {
+                    if (handler.canHandle(url)) {
+                        console.log('Queued ' + url + ' with ' + handler.name);
+                        queue[urlObject.uuid] = {client: client, channel: to, from: nick};
+                        handler.processUrl(urlObject);
+                        return true;
+                    }
+                });
+            });
         });
     }
 };
+
 
 var handlePM = function (client) {
     return function (from, message) {
@@ -81,7 +95,7 @@ var handlePM = function (client) {
 
             handleMessage(client)(from, from, message, '');
         } catch (exception) {
-                console.log(exception);
+            console.log(exception);
         }
     }
 };

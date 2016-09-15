@@ -17,7 +17,6 @@ function Imgur(handler_config) {
 }
 
 Imgur.prototype = Object.create(Base.prototype);
-// Imgur.constructor = Base;
 
 Imgur.prototype.canHandle = function (url) {
     var parsedUrl = this.urlParser.parse(url);
@@ -55,6 +54,9 @@ Imgur.prototype.processNext = function () {
 
 };
 
+/**
+ * 2016-09-14: Update URL w/ direct image link
+ */
 Imgur.prototype.apiRequestImageCallback = function (self, url) {
     return function (error, response, body) {
         if (error) {
@@ -63,6 +65,7 @@ Imgur.prototype.apiRequestImageCallback = function (self, url) {
 
         var data = JSON.parse(body).data;
 
+        url.url = data.link;
         url.handledBy = 'Imgur';
         url.result.title = data.title;
         url.result.type = 'Image';
